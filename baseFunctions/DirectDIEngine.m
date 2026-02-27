@@ -1,7 +1,7 @@
 function indexResult = DirectDIEngine(drpM, drpLib, options)
     arguments
-        drpM
-        drpLib
+        drpM % measured
+        drpLib % library
         options.K (1,1) double = 1
     end
     [n1,n2] = size(drpM);
@@ -16,7 +16,7 @@ function indexResult = DirectDIEngine(drpM, drpLib, options)
             drplist_m(jj,:) = double(reshape(drpM{ii,jj},1,[]))/256;
         end
 
-        [Idx, D] = knnsearch(drplist_s, drplist_m, K=options.K);
+        [Idx, D] = knnsearch(drplist_s, drplist_m, K=options.K); %search the full length of the DRPs
 
         EUmap(:,ii,:) = drpLib.eulerDic(Idx(:,1),:)';
         indexResult.idxMap(ii,:) = Idx(:,1);

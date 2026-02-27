@@ -21,8 +21,7 @@ exp_para.fitting_para = [1 0.6 1 1]; % for cosine function
 
 %% load sample and background dataset
 scaleCoeff = 0.5;
-%pos1 = [0.500000000000000	2.490171990172257	963	1.078009828009828e+03 ]; %zeros(1,4);
-pos1 = [0.50 2.490 40 5e+02];
+pos1 = [0.500000000000000	2.490171990172257	963	1.078009828009828e+03 ]; %zeros(1,4);
 [igray_sample, phitheta, pos, img_sample] = drp_loader( ...
     exp_para,pos1,format='jpg',scale=scaleCoeff);
 %[igray_back, ~, ~] = drp_loader(exp_para,pos,scale=scaleCoeff);

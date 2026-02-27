@@ -6,6 +6,9 @@ function result = IndexingEngine(drp_original,AE_DRM,exp_para,drpDic,euDic,rotDi
 % Edit date: Sep 20, 2021
 % By: Chenyang ZHU @ NTU
 % -------------------------------------------------------------------------
+
+% this relates the measured DRPs and the generated DRPs
+
 [n1,n2] = size(drp_original);
 [n3,n4] = size(drp_original{1});
 th_num = exp_para.th_num;
@@ -17,7 +20,7 @@ n_tot = n3 * n4;
 num_dic = length(drpDic);
 midpt = floor(ph_num/2);
 
-dic_Enc = encode(AE_DRM,drpDic');
+dic_Enc = encode(AE_DRM,drpDic'); % encode the dictionary too
 
 knn_num = 10;
 % output
@@ -40,12 +43,12 @@ for ii = 1:n1
     end
     
     drp_Enc = encode(AE_DRM,drp_cell); % drp_Enc becomes a row of barcodes
-    Idx = knnsearch(dic_Enc', drp_Enc','K',knn_num);
+    Idx = knnsearch(dic_Enc', drp_Enc','K',knn_num); %get the closest relation
     tmpEU = euDic(Idx(:,1),:);
     tmpEU(:,1) = (360 / ph_num) * (-shift_row + rotDic(Idx(:,1)));
     result.shift(ii,:) = shift_row;
     result.EUmap(ii,:,:) = tmpEU;
-    result.quality(ii,:) = sqrt(sum((dic_Enc(:,Idx(:,1)) - drp_Enc).^2));
+    result.quality(ii,:) = sqrt(sum((dic_Enc(:,Idx(:,1)) - drp_Enc).^2)); % difference between the Euler angles
     
     result.idx(ii,:,:) = Idx;
     workbar(ii/n1,sprintf('Computing texture mapping %d / %d',[ii n1]));

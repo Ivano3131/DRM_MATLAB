@@ -76,7 +76,7 @@ figure, imshowpair(plot_ipf_map(EUmap_trans),colorEBSDoriginal,'montage')
 eulerDRM = reshape(EUmap_trans,n1*n2,3);
 eulerEBSD = reshape(EUmap_ebsd,n1*n2,3);
 % cs = ebsd_temp.CSList{2};
-cs = crystalSymmetry('cubic');
+cs = crystalSymmetry('cubic'); %change this
 oriDRM = orientation.byEuler(eulerDRM.*degree,cs);
 oriEBSD = orientation.byEuler(eulerEBSD.*degree,cs);
 rot = rotation.byAxisAngle(vector3d.X,0*degree);
@@ -117,7 +117,7 @@ for ii = 1:num_grain
     else
         misOri_temp = misOriMap(grainIdMap_ebsd == ii);
         grainiiMap = grainIdMap_ebsd == ii;
-        
+
         misOriGrain(ii) = median(misOri_temp(misOri_temp < prctile(misOri_temp,80)));
     end
 end
@@ -125,7 +125,7 @@ figure,
 histogram(misOriGrain,61,'BinLimits',[1 62],...
     'EdgeColor','k','EdgeAlpha',0.5,'FaceColor','#0072BD','FaceAlpha',1)
 set(gca,'LineWidth',1.5,'FontSize',14)
-% xlabel('prediction error (deg)') 
+% xlabel('prediction error (deg)')
 xlim([1 62])
 ylim([0 100])
 % ylabel('number of grains')
@@ -138,7 +138,7 @@ colormap("jet")
 figure, plotIPDF([oriEBSD_top,oriEBSD_bot],[misOriAngle_top_02;misOriAngle_bot_02],vector3d.Z,'points',1e6,'MarkerSize',1)
 colormap("jet")
 
-%% 
+%%
 misOri = [reshape(misOriMap_top,[],1); reshape(misOriMap_bot,[],1)];
 misOri = misOri(~isnan(misOri));
 figure,
@@ -153,7 +153,7 @@ title('histogram of orientation error')
 
 %% plot on indexing error IPF map
 figure, plotIPDF(oriEBSD,misOriAngle,vector3d.Z,...
- 'points',length(oriEBSD),'MarkerSize',1)
+    'points',length(oriEBSD),'MarkerSize',1)
 colormap("jet")
 
 

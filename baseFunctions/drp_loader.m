@@ -78,7 +78,11 @@ function [igrey,phitheta,pos,img_sample] = drp_loader(exp_para,pos,options)
             name = split(D_im(ii).name,["_","."]);
             phi_tmp = str2num(name{1});
             theta_tmp = str2num(name{2})/10;
+            %phitheta
+            %phi_tmp
+            %theta_tmp
             idx = find(phitheta(:,1)==phi_tmp & phitheta(:,2)==theta_tmp);
+            %length(idx)
             igrey(:,:,idx) = imcrop(igrey_tmp,pos);
             workbar(ii/num_img,sprintf('Generating igrey, %d / %d',[ii num_img]));
         end
@@ -88,8 +92,12 @@ function [igrey,phitheta,pos,img_sample] = drp_loader(exp_para,pos,options)
             igrey_tmp = imresize(imread(tmp_file),scale);
             name = split(D_im(ii).name,["_","."]);
             phi_tmp = str2num(name{1});
-            theta_tmp = str2num(name{2})/10;
+            theta_tmp = str2num(name{2}); % /10 was here
+            %phitheta
+            %phi_tmp
+            %theta_tmp
             idx = find(phitheta(:,1)==phi_tmp & phitheta(:,2)==theta_tmp);
+            %length(idx)
             igrey(:,:,idx) = imcrop(igrey_tmp,pos);
             workbar(ii/num_img,sprintf('Generating igrey, %d / %d',[ii num_img]));
         end
