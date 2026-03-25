@@ -25,7 +25,7 @@ exp_para.fitting_para = [1 0 0 0]; %Ti64
 exp_para.fitting_para = [1, 0.6, 10, 6, 0.8, 8]; %Ti7 - more narrow peak
 
 pos1 = [200 1000 300 1079]; %Ti64 - one of the non_good groups takes
-pos1 = [0 0 2048 1080]; %Ti7
+pos1 = [0 0 10 10]; %Ti7
 %1,165,16; 95,29,15; 161,28,19
 %pos1 = [0 0 963 1079];
 use_saved_drp_dic = false;
