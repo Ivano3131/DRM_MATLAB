@@ -1,13 +1,14 @@
 %% DRM measurement indexing engine
-exp_para.th_max = 65;
-exp_para.th_min = 10;
-exp_para.th_num = 12;
-exp_para.ph_num = 120;
+exp_para.th_max = 60;
+exp_para.th_min = 20;
+exp_para.th_num = 5;
+exp_para.ph_num = 72;
 exp_para.ph_min = 0;
-exp_para.ph_max = 357;
+exp_para.ph_max = 355;
 %exp_para.faceting = [1 0 0]; %change this
 
-exp_para.faceting = [1 0 0]; % once it gets rotated around, it should be fine
+exp_para.faceting = [1 0 0]; %Ti64 % once it gets rotated around, it should be fine
+exp_para.faceting = [1 1 0]; %Ti7
 %faceting_weights = [1 1 20]; % used to be 1 1 20 - defined in
 %rotate_facet!!!
 
@@ -20,9 +21,11 @@ exp_para.faceting = [1 0 0]; % once it gets rotated around, it should be fine
 %exp_para.fitting_para = [1 0.6 240 240 0.8 8]; % to be updated
 %exp_para.fitting_para = [1 0.6 2.5 6]; %was 1 0.6 1 1% for cosine function
 %exp_para.fitting_para = [0 1 0 5]; - Original; not Lambertian diffusion
-exp_para.fitting_para = [1 0 0 0];
+exp_para.fitting_para = [1 0 0 0]; %Ti64
+exp_para.fitting_para = [1, 0.6, 10, 6, 0.8, 8]; %Ti7 - more narrow peak
 
-pos1 = [200 1000 300 1079]; %one of the non_good groups takes
+pos1 = [200 1000 300 1079]; %Ti64 - one of the non_good groups takes
+pos1 = [0 0 2048 1080]; %Ti7
 %1,165,16; 95,29,15; 161,28,19
 %pos1 = [0 0 963 1079];
 use_saved_drp_dic = false;
@@ -74,6 +77,7 @@ cosine_attempt = @(p,x) p(1) * cosd(x) ./ p(2); % this is not the correct way of
 % shininess is not considered
 
 % plot the figures
+%{
 x_val = linspace(0,180,180);
 cauchy_val = cauchy([1 1], x_val);
 cos_val = cosine_attempt([1 1], x_val);
@@ -84,6 +88,7 @@ hold("on");
 figure('Name', 'cos_val');
 plot(x_val, cos_val);
 hold("on");
+%}
 
 %% generate DRP dictionary
 if use_saved_drp_dic == false
@@ -94,10 +99,10 @@ if use_saved_drp_dic == false
     clear num_dic
 
     % save the outputs of makeDRPdic
-    save("DRP_dictionary.mat", "drpDic", "euDic", "rotDic");
+    save("DRP_dictionary_Ti7.mat", "drpDic", "euDic", "rotDic");
 end
 if use_saved_drp_dic == true
-    S = load('DRP_dictionary.mat', 'drpDic', 'euDic', 'rotDic');
+    S = load('DRP_dictionary_Ti7.mat', 'drpDic', 'euDic', 'rotDic');
     drpDic = S.drpDic;
     euDic = S.euDic;
     rotDic = S.rotDic;
@@ -115,10 +120,10 @@ if use_autoencoder == false
         'UseGPU', false); % this is a built-in MATLAB function
     clear hiddenSize1
 
-    save('DRP_autoencoder.mat', 'AE_DRM');
+    save('DRP_autoencoder_Ti7.mat', 'AE_DRM');
 end
 if use_autoencoder == true
-    S = load('DRP_autoencoder.mat', 'AE_DRM');
+    S = load('DRP_autoencoder_Ti7.mat', 'AE_DRM');
     AE_DRM = S.AE_DRM;
 end
 %%

@@ -4,13 +4,14 @@ function drpLib = DRPLibGenerator(ang_res, exp_para, options)
         ang_res (1,1) double 
         exp_para (1,1) struct
         options.verbose (1,1) logical = 1
-        options.crystalSymmetry (1,:) string = 'cubic'
+        options.crystalSymmetry (1,:) string = 'hexagonal' %'cubic'
     end
     %cs = crystalSymmetry(options.crystalSymmetry);
-    cs = {
-    crystalSymmetry('6/mmm', [2.95, 2.95, 4.68], 'X||a*', 'Y||b', ...
-    'mineral', 'Ti-Hex', 'color', 'light gray')
-    };
+    cs = crystalSymmetry(options.crystalSymmetry);
+    
+    %crystalSymmetry('6/mmm', [2.95, 2.95, 4.68], 'X||a*', 'Y||b', ...
+    %'mineral', 'Ti-Hex', 'color', 'light gray')
+
     ori = equispacedSO3Grid(cs,'resolution',ang_res);
     nn = length(ori.phi1);
     drpLib.drpDic = cell(nn,1);

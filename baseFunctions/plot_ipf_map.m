@@ -7,10 +7,8 @@ end
 euler = reshape(EUmap,size(EUmap,1)*size(EUmap,2),size(EUmap,3));
 % get the color mapping of DRM measurement
 %cs = crystalSymmetry('cubic'); % change this
-cs = {
-  crystalSymmetry('6/mmm', [2.95, 2.95, 4.68], 'X||a*', 'Y||b', ...
-  'mineral', 'Ti-Hex', 'color', 'light gray')
-};
+cs = {crystalSymmetry('6/mmm', [2.95, 2.95, 4.68], 'X||a*', 'Y||b', ...
+  'mineral', 'Ti-Hex', 'color', 'light gray')};
 oM = ipfHSVKey(cs);
 ori_drm = orientation.byEuler(euler(:,1)*degree,euler(:,2)*degree,euler(:,3)*degree,cs);
 if options.plotDir == "z"

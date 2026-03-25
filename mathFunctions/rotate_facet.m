@@ -7,13 +7,16 @@ function [all_rot, faceW, pairW] = rotate_facet(Aa,Bb,Cc,facet)
 % Edit date: Aug 27, 2021
 % By: Chenyang ZHU @ NTU
 % -------------------------------------------------------------------------
-faceting_weights = [1 1 20];
+faceting_weights = [1 1 20]; %Ti64
+faceting_weights = [1 1 1]; %Ti7
 
 if nargin < 4
     error('faceting information is not determined')
 end
 
 u = facet(1); v = facet(2); w = facet(3); %weights take care of the shape
+
+%Ti64--------------------------------------------------------------------
 
 % remove the sides which are infinitely long?
 vec_facets = [u v w; -u v w; u -v w; u v -w;...
@@ -39,7 +42,7 @@ faceW = [face_u_dir; face_u_dir; face_u_dir; face_u_dir;...
 faceW_shortened = [face_u_dir; face_u_dir; face_u_dir; face_u_dir;...
     face_u_dir; face_u_dir; face_u_dir; face_u_dir; face_w_dir; face_w_dir; face_w_dir; face_w_dir;
    face_w_dir; face_w_dir; face_w_dir; face_w_dir];
-faceW = faceW_shortened
+faceW = faceW_shortened;
 faceW = faceW(ia,:);
 pairW = [faceting_weights(1);faceting_weights(1);faceting_weights(1);faceting_weights(1);...
     faceting_weights(1);faceting_weights(1);faceting_weights(1);faceting_weights(1); faceting_weights(3); faceting_weights(3);...
@@ -48,7 +51,7 @@ pairW = [faceting_weights(1);faceting_weights(1);faceting_weights(1);faceting_we
 pairW_shortened = [faceting_weights(1);faceting_weights(1);faceting_weights(1);faceting_weights(1);...
     faceting_weights(1);faceting_weights(1);faceting_weights(1);faceting_weights(1); faceting_weights(3); faceting_weights(3);...
     faceting_weights(3); faceting_weights(3); faceting_weights(3);faceting_weights(3);faceting_weights(3);faceting_weights(3)];
-pairW = pairW_shortened
+pairW = pairW_shortened;
 pairW = pairW(ia,:);
 
 %%cuboid with weights
@@ -79,6 +82,14 @@ pairW = pairW(ia,:);
 %        pairW(j,i) = w;
 %    end
 %end
+
+%Ti64 ---------------------------------------------------------------
+
+%Ti7
+vec_facets = [w w u; w w -u; u -u w; -u u w; 2*u u w; -2*u -u w; u 2*u w; -u -2*u w];
+vec_eq = unique(vec_facets, 'rows');
+faceW = ones(size(vec_eq,1),1);
+pairW = ones(size(vec_eq,1),1);
 
 faceW = faceW / sum(faceW);
 if any(pairW(:) > 0)

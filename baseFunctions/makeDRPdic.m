@@ -46,12 +46,31 @@ for ii = 1:nn
 end
 %vec
 
+% cubic minimal space ------------------------------------------------
 quadr = and(and(vec(:,1)>=0,vec(:,2)>=0),vec(:,3)>=0); % all entries are positive
 ipf1 = and(vec(:,1)>=vec(:,2),vec(:,2)>=vec(:,3));
 ipf2 = and(vec(:,2)>=vec(:,1),vec(:,1)>=vec(:,3)); % z needs to be the smallest component
 good_idx = and(quadr,or(ipf1,ipf2)); %positive entries and within the part of the sphere
 goodvec = vec(good_idx==1,:);
 goodnn = sum(good_idx); % amount of good vectors
+% --------------------------------------------------------------------
+
+% hexagonal minimal space --------------------------------------------
+nnTarget = 24 *num;
+nZ = ceil(sqrt(nnTarget));
+nPhi = ceil(nnTarget / nZ);
+zList = linspace(0,1,nZ);
+phiList = linspace(0,30, nPhi+1);
+phiList(end) = [];
+[zz,pp] = ndgrid(zList, phiList);
+thlist = asind(zz(:));
+phlist = pp(:);
+goodvec = [cosd(phlist).*cosd(thlist), ...
+    sind(phlist).*cosd(thlist), ...
+    sind(thlist)];
+goodvec = uniquetol(goodvec, 1e-10, 'ByRows', true);
+goodnn = size(goodvec,1);
+% hexagonal minimal space ------------------------------------------
 
 drpDic = cell(goodnn,1);
 euDic = zeros(goodnn,3);
