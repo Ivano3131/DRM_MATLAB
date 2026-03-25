@@ -6,7 +6,11 @@ function xyz_Point = plotDataIPF(data,orientations,vecProj,options)
         data
         orientations
         vecProj
-        options.cs = crystalSymmetry('cubic')
+        %options.cs = crystalSymmetry('cubic')
+        options.cs = {
+          crystalSymmetry('6/mmm', [2.95, 2.95, 4.68], 'X||a*', 'Y||b', ...
+          'mineral', 'Ti-Hex', 'color', 'light gray')
+        };
         options.cmap = 'palura'
         options.linewidth (1,1) double = 2
         options.markersize (1,1) double = 8

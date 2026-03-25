@@ -22,16 +22,28 @@ sd_Main = exp_para.fitting_para(3); % width of point reflectance
 sd_facet = exp_para.fitting_para(4);
 
 %rot_facet = normr(rotate_facet(eu1,eu2,eu3,faceting)); % normr normalizes
-[rot_facet, faceW, pairW] = rotate_facet(eu1, eu2, eu3, faceting);
+[rot_facet, faceW, pairW] = rotate_facet(eu1, eu2, eu3, faceting); %return the facet orientations after the Euler orientation
 th_step = (th_max - th_min) / (th_num - 1);
 ph_step = 360 / ph_num;
 
 cauchy = @(p,x) p(1) ./ ((1+((x)./p(2)).^2)); %creates a function to model the intensity
 % i_main / (1 + (peakDist/sd_main)^2)
 
-%cauchy = @(p,x) p(1) * cosd(x) ./ p(2);
+%cosine_attempt = @(p,x) p(1) * cosd(x) ./ p(2);
 
 % shininess is not considered
+
+% plot the figures
+%x_val = linspace(0,180,180);
+%cauchy_val = cauchy([1 1], x_val);
+%cos_val = cosine_attempt([1 1], x_val);
+
+%figure('Name', 'cauchy_val');
+%plot(x_val, cauchy_val);
+%hold("on");
+%figure('Name', 'cos_val');
+%plot(x_val, cos_val);
+%hold("on");
 
 th_range = th_min-th_step : th_step : ...
     (floor((90-th_min)/th_step)-1)*th_step+th_min;
@@ -53,17 +65,41 @@ temp_simDRP_pair = 0;
 
 % major reflectance peak simulation
 for ii = 1:size(rot_facet,1)
+    %{ Not Lambertian diffusion
     ref_a1 = rot_facet(ii,:); % N1 - microfacet
-    ref = [0 0 -1] - 2 * dot([0 0 -1], ref_a1) * ref_a1; % incident direction of the primary reflection
-    tmp_thph = vec2thph(ref);
-    tmp_theta = tmp_thph(1);
-    dPh=abs(ph_DRP - tmp_thph(2)); % difference in phi
-    dPh=abs(dPh - 360 * (dPh>180));
-    peakDist=acosd(sind(th_DRP)*sind(tmp_theta)+cosd(th_DRP)*cosd(tmp_theta).*cosd(dPh)); % angular distance between the current point in DRP and the primary reflection direction
+    %ref = [0 0 -1] - 2 * dot([0 0 -1], ref_a1) * ref_a1; % incident direction of the primary reflection
+    %tmp_thph = vec2thph(ref);
+    %tmp_theta = tmp_thph(1);
+    %dPh=abs(ph_DRP - tmp_thph(2)); % difference in phi
+    %dPh=abs(dPh - 360 * (dPh>180));
+    %peakDist=acosd(sind(th_DRP)*sind(tmp_theta)+cosd(th_DRP)*cosd(tmp_theta).*cosd(dPh)); % angular distance between the current point in DRP and the primary reflection direction
     %simDRP = max(simDRP, faceW(ii)*cauchy([i_Main, sd_Main], peakDist)); % maximum between current value and the new value due to Cauchy distribution
     %length(faceW)
-    temp_simDRP = temp_simDRP + faceW(ii) * cauchy([i_Main, sd_Main], peakDist);
-    simDRP = max(temp_simDRP, simDRP);
+    %temp_simDRP = temp_simDRP + faceW(ii) * cauchy([i_Main, sd_Main], peakDist);
+    %temp_simDRP = faceW(ii) * cauchy([i_Main, sd_Main], peakDist);
+    %simDRP = max(temp_simDRP, simDRP);
+    %} Lambertian diffusion
+
+    % implement lambertian diffusion model
+    % simulate a cosine distribution around the facet_normal
+    %lambertian = @(p,x) p(1)*cosd(x);
+
+    %get the 'theta' between the facet and the viewing direction (which is
+    %Z)
+
+    %lambertian_cosine = acosd(dot([0 0 -1], ref_a1)); % angle between facet normal and viewing direction
+
+
+    %temp_simDRP = faceW(ii) * lambertian([i_Main, sd_Main], lambertian_cosine);
+
+    cosTheta = squeeze( ...
+    ref_a1(1) * vec_DRP(1,:,:) + ...
+    ref_a1(2) * vec_DRP(2,:,:) + ...
+    ref_a1(3) * vec_DRP(3,:,:) );
+
+    temp_simDRP = faceW(ii) * i_Main * max(cosTheta, 0);
+    simDRP = max(simDRP, temp_simDRP);
+ 
 end
 
 % great circle band simulation
@@ -90,7 +126,8 @@ for ii = 1:size(rot_facet,1)
             end
         end
         %         peakDist = bandDist; % + min(peakDista, peakDistb).^2.5;
-        temp_simDRP_pair = temp_simDRP_pair + pairW(ii) * cauchy([i_facet, sd_facet], bandDist);
+        %temp_simDRP_pair = temp_simDRP_pair + pairW(ii) * cauchy([i_facet, sd_facet], bandDist);
+        temp_simDRP_pair = pairW(ii) * cauchy([i_facet, sd_facet], bandDist);
         %simDRP = max(simDRP, pairW(ii, jj)*cauchy([i_facet, sd_facet], bandDist));
         simDRP = max(simDRP, temp_simDRP_pair);
     end

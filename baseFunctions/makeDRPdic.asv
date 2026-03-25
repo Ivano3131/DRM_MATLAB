@@ -15,15 +15,36 @@ end
 % th_num = exp_para.th_num;
 ph_num = exp_para.ph_num;
 
+%{
 nn = 24*num;
 randii = [rand(1,nn); rand(1,nn)]; % generates two columns of random number (0-1)
 thphii = [acosd(2*randii(1,:)-1)-90; 360*randii(2,:)]; %generates a random set of theta and phi combinations
+%}
 
+% create a uniformly spaced set
+nn = 24*num;
+nTh = ceil(sqrt(nn));
+nPh = ceil(nn/nTh);
+uTh = linspace(0,1,nTh);
+uPh = linspace(0,1,nPh);
+uPh(end) = [];
+[uth, uph] = ndgrid(uTh, uPh); % to exclude 360 as 0 is included
+%uth
+%uph
+
+thlist = acosd(2*uth(:)-1)-90;
+phlist = 360*uph(:); % generates a structured set of theta and phi combinations
+thphii = [thlist.'; phlist.']; % dot apostrophe operator to transpose without conjugation
+%thphii
+nn = size(thphii, 2);
 vec = zeros(nn,3);
+
+%vec = zeros(nn,3);
 for ii = 1:nn
     tmp_thph = thphii(:,ii);
     vec(ii,:) = thph2vec(tmp_thph(1),tmp_thph(2)); % convert the angle combination to a vector
 end
+%vec
 
 quadr = and(and(vec(:,1)>=0,vec(:,2)>=0),vec(:,3)>=0); % all entries are positive
 ipf1 = and(vec(:,1)>=vec(:,2),vec(:,2)>=vec(:,3));
@@ -38,12 +59,13 @@ rotDic = zeros(goodnn,1); % create lists for the good entries
 
 midpt = floor(ph_num/2); % mid point of amount of phi entries
 
-[tmp_vec_tmp, ~, ~] = rotate_facet(0,0,0,exp_para.faceting); % normalized, removed, vector of the different equivalent directions
+[tmp_vec_tmp, ~, ~] = rotate_facet(0,0,0,exp_para.faceting); %returns all plane normals and their weighting factors
+% normalized, removed, vector of the different equivalent directions
 tmp_vec = tmp_vec_tmp(1,:);
 
 parfor index = 1:goodnn % parallel loops for
-    if mod(index*10,goodnn) == 0
-        index*10/goodnn
+    if mod(index*100,goodnn) == 0
+        index*100/goodnn
     end
     vec1 = goodvec(index,:);
     vec2 = normr(cross(vec1,tmp_vec)); % cross product lighting and facet

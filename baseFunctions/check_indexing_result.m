@@ -29,7 +29,12 @@ clear euler oM ori_drm_all color_drm_all
 
 figure('Name','demo_fig');
 imshow(color_drm_reg_all,'Border','tight');
-[x,y] = ginput;
+%x = [52; 284; 18]; % for 400 400 411 411
+%y = [110; 220; 284];
+x = [90; 140; 170];
+y = [40; 43; 14];
+%fix it to get equal comparisons
+%[x,y] = ginput;
 % press 'enter' to stop
 nn = length(y);
 y = fix(y);
@@ -71,6 +76,7 @@ for ii = 1:nn
     end
     DRPdisp(drpsim_tmp,exp_para);
     drp_predicted{ii} = drpsim_tmp;
+    eu_tmp
 end
 
 if options.plot_xtal

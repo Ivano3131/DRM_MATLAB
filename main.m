@@ -8,7 +8,8 @@ exp_para.ph_max = 357;
 %exp_para.faceting = [1 0 0]; %change this
 
 exp_para.faceting = [1 0 0]; % once it gets rotated around, it should be fine
-faceting_weights = [1 1 20];
+%faceting_weights = [1 1 20]; % used to be 1 1 20 - defined in
+%rotate_facet!!!
 
 % for aluminum, the fitting parameters:
 %exp_para.fitting_para = [1, 0.6, 20, 6, 0.8, 8]; %change this
@@ -17,12 +18,20 @@ faceting_weights = [1 1 20];
 
 % for titanium, the fitting parameters:
 %exp_para.fitting_para = [1 0.6 240 240 0.8 8]; % to be updated
-exp_para.fitting_para = [1 0.6 1 1]; % for cosine function
+%exp_para.fitting_para = [1 0.6 2.5 6]; %was 1 0.6 1 1% for cosine function
+%exp_para.fitting_para = [0 1 0 5]; - Original; not Lambertian diffusion
+exp_para.fitting_para = [1 0 0 0];
+
+pos1 = [200 1000 300 1079]; %one of the non_good groups takes
+%1,165,16; 95,29,15; 161,28,19
+%pos1 = [0 0 963 1079];
+use_saved_drp_dic = false;
+use_autoencoder = false;
 
 %% load sample and background dataset
 scaleCoeff = 0.5;
 %pos1 = [0.500000000000000	2.490171990172257	963	1.078009828009828e+03 ]; %zeros(1,4);
-pos1 = [0.50 2.490 40 5e+02];
+%uses the whole figure regardless which makes the figure not overlap
 [igray_sample, phitheta, pos, img_sample] = drp_loader( ...
     exp_para,pos1,format='jpg',scale=scaleCoeff);
 %[igray_back, ~, ~] = drp_loader(exp_para,pos,scale=scaleCoeff);
@@ -37,7 +46,7 @@ n3 = size(igray_norm,3);
 drp_original = igray2drp(igray_norm,phitheta,exp_para);
 % uisave('igray_norm','igray_norm')
 %% clear igray_norm igray_sample igray_back
-drp_sample = igray2drp(igray_sample,phitheta,exp_para);
+%drp_sample = igray2drp(igray_sample,phitheta,exp_para);
 
 %% show DRP
 % x = 550;
@@ -56,23 +65,62 @@ drp_sample = igray2drp(igray_sample,phitheta,exp_para);
 
 % till here is standard
 
+cauchy = @(p,x) p(1) ./ ((1+((x)./p(2)).^2)); %creates a function to model the intensity
+% i_main / (1 + (peakDist/sd_main)^2)
+
+cosine_attempt = @(p,x) p(1) * cosd(x) ./ p(2); % this is not the correct way of going about it
+% to test the diffuse reflection --> incident vector should not matter
+
+% shininess is not considered
+
+% plot the figures
+x_val = linspace(0,180,180);
+cauchy_val = cauchy([1 1], x_val);
+cos_val = cosine_attempt([1 1], x_val);
+
+figure('Name', 'cauchy_val');
+plot(x_val, cauchy_val);
+hold("on");
+figure('Name', 'cos_val');
+plot(x_val, cos_val);
+hold("on");
+
 %% generate DRP dictionary
-num_dic = 100; %was 10000
-[drpDic, euDic, rotDic] = makeDRPdic(num_dic,exp_para,engine="single");
-% [drpDic_2, euDic_2, rotDic_2] = makeDRPdic(num_dic,exp_para,engine="double");
-%
-clear num_dic
+if use_saved_drp_dic == false
+    num_dic = 100; %was 10000
+    [drpDic, euDic, rotDic] = makeDRPdic(num_dic,exp_para,engine="single");
+    % [drpDic_2, euDic_2, rotDic_2] = makeDRPdic(num_dic,exp_para,engine="double");
+    %
+    clear num_dic
+
+    % save the outputs of makeDRPdic
+    save("DRP_dictionary.mat", "drpDic", "euDic", "rotDic");
+end
+if use_saved_drp_dic == true
+    S = load('DRP_dictionary.mat', 'drpDic', 'euDic', 'rotDic');
+    drpDic = S.drpDic;
+    euDic = S.euDic;
+    rotDic = S.rotDic;
+end
 
 %% training an autoencoder
-hiddenSize1 = 100;
-AE_DRM = trainAutoencoder(drpDic,hiddenSize1, ...
-    'MaxEpochs',200, ...
-    'L2WeightRegularization',0.001, ...
-    'SparsityRegularization',4, ...
-    'SparsityProportion',0.10, ...
-    'ScaleData', false, ...
-    'UseGPU', false); % this is a built-in MATLAB function
-clear hiddenSize1
+if use_autoencoder == false
+    hiddenSize1 = 100;
+    AE_DRM = trainAutoencoder(drpDic,hiddenSize1, ...
+        'MaxEpochs',200, ...
+        'L2WeightRegularization',0.001, ...
+        'SparsityRegularization',4, ...
+        'SparsityProportion',0.10, ...
+        'ScaleData', false, ...
+        'UseGPU', false); % this is a built-in MATLAB function
+    clear hiddenSize1
+
+    save('DRP_autoencoder.mat', 'AE_DRM');
+end
+if use_autoencoder == true
+    S = load('DRP_autoencoder.mat', 'AE_DRM');
+    AE_DRM = S.AE_DRM;
+end
 %%
 % start indexing engine and obtain final result
 tic
@@ -86,18 +134,24 @@ toc
 % non_index = ones(n1,n2,'logical'); % 1 for indexed; 0 for non-indexed
 index_sum = zeros(n1,n2);
 
+%{
 for ii = 1:n1
     for jj = 1:n2
         index_num(ii,jj) = sum(drp_original{ii,jj},'all');
     end
 end
+%}
+
+index_num = cellfun(@(x) sum(x, 'all'), drp_original); % apply function to each cell in the array
+
 non_index_bg = index_num > 3e4; % weird
 figure, imshow(non_index_bg)
 % poorly-indexed pixels
 non_index_poor = index_result.quality < prctile(index_result.quality(:),95);
 
-non_index = non_index_poor & non_index_bg;
-figure, imshow(non_index)
+%comment it out to reduce figure size
+%non_index = non_index_poor & non_index_bg;
+%figure, imshow(non_index)
 %% plot results
 % [ebsd_DRM] = plot_ipf_DRM(index_result.EUmap, 'Ni', nonindex=ones(size(index_result.EUmap)));
 figure, imshow(plot_ipf_map(index_result.EUmap))
@@ -118,12 +172,14 @@ for ii = 1:4
     figure, imshow(plot_ipf_map(indexResult.euMap));
     title(sprintf("band peak ratio with no autoencoder %.1f",bandIntensity(ii)),'FontSize',14,'FontWeight','bold')
 end
+
 %%
 % drpLib = DRPLibGenerator(3*degree, exp_para);
 
 indexResult = DirectDIEngine(drp_original, drpLib);
 
 
+%{
 function drpLib = DRPLibGenerator(ang_res, exp_para, options)
 % this function requires MTEX package for generation of orientation library
 arguments
@@ -152,31 +208,32 @@ for ii = 1:nn
     end
 end
 end
+%}
 
 
-function indexResult = DirectDIEngine(drpM, drpLib, options)
-arguments
-    drpM
-    drpLib
-    options.K (1,1) double = 1
-end
-[n1,n2] = size(drpM);
-EUmap = zeros(3,n1,n2);
-drplist_s = zeros(length(drpLib.drpDic), numel(drpM{1,1}));
-for ii = 1:length(drpLib.drpDic)
-    drplist_s(ii,:) = double(reshape(drpLib.drpDic{ii},1,[]))/256;
-end
-for ii = 1: n1
-    drplist_m = zeros(n2,numel(drpM{1,1}));
-    for jj = 1:n2
-        drplist_m(jj,:) = double(reshape(drpM{ii,jj},1,[]))/256;
-    end
+%function indexResult = DirectDIEngine(drpM, drpLib, options)
+%arguments
+%    drpM
+%    drpLib
+%    options.K (1,1) double = 1
+%end
+%[n1,n2] = size(drpM);
+%EUmap = zeros(3,n1,n2);
+%drplist_s = zeros(length(drpLib.drpDic), numel(drpM{1,1}));
+%for ii = 1:length(drpLib.drpDic)
+%    drplist_s(ii,:) = double(reshape(drpLib.drpDic{ii},1,[]))/256;
+%end
+%for ii = 1: n1
+%    drplist_m = zeros(n2,numel(drpM{1,1}));
+%    for jj = 1:n2
+%        drplist_m(jj,:) = double(reshape(drpM{ii,jj},1,[]))/256;
+%    end
 
-    [Idx, D] = knnsearch(drplist_s, drplist_m, K=options.K);
+%    [Idx, D] = knnsearch(drplist_s, drplist_m, K=options.K);
 
-    EUmap(:,ii,:) = drpLib.eulerDic(Idx(:,1),:)';
-    indexResult.idxMap(ii,:) = Idx(:,1);
-    workbar(ii/n1, sprintf("processing %d / %d lines...",[ii n1]));
-end
-indexResult.euMap = permute(EUmap, [2,3,1]);
-end
+%    EUmap(:,ii,:) = drpLib.eulerDic(Idx(:,1),:)';
+%    indexResult.idxMap(ii,:) = Idx(:,1);
+%    workbar(ii/n1, sprintf("processing %d / %d lines...",[ii n1]));
+%end
+%indexResult.euMap = permute(EUmap, [2,3,1]);
+%end

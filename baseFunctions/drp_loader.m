@@ -12,7 +12,8 @@ function [igrey,phitheta,pos,img_sample] = drp_loader(exp_para,pos,options)
         pos (1,4) double
         options.format (1,:) string = 'jpg'
         options.scale (1,1) double = 1
-        options.folder (1,:) string = ""
+        options.folder (1,:) string = "C:\Users\mrbla\OneDrive\Bureaublad\Cambridge\P&W Deliverable 4\Ti7-Krolls-20min-EBSD"
+        %"C:\Users\mrbla\OneDrive\Cambridge\P&W Deliverable 4\Ti7-Krolls-20min" %"C:\Users\mrbla\OneDrive\Bureaublad\Cambridge\Iven\cropped_left"
     end
 
     th_min = exp_para.th_min;

@@ -15,27 +15,40 @@ end
 
 u = facet(1); v = facet(2); w = facet(3); %weights take care of the shape
 
+% remove the sides which are infinitely long?
 vec_facets = [u v w; -u v w; u -v w; u v -w;...
     u w v; -u w v; u -w v; u w -v; v w u; -v w u; v -w u; v w -u;...
     v u w; -v u w; v -u w; v u -w; w u v; -w u v; w -u v; w u -v;...
     w v u; -w v u; w -v u; w v -u];
+vec_facets_shortened = [u v w; -u v w; u -v w; u v -w;...
+    u w v; -u w v; u -w v; u w -v; v w u; -v w u; v -w u; v w -u;...
+    w v u; -w v u; w -v u; w v -u];
+vec_facets = vec_facets_shortened;
 vec_eq = unique(vec_facets,'rows');
 %vec_eq
 [~, ia, ~] = unique(vec_facets, 'rows');
 %ia
 % this is for cubic system
-face_long = faceting_weights(2)*faceting_weights(3);
-face_long_side = faceting_weights(1)*faceting_weights(3);
-top_basal = faceting_weights(1)*faceting_weights(2);
-faceW = [face_long; face_long; face_long; face_long;...
-    face_long; face_long; face_long; face_long; top_basal; top_basal; top_basal; top_basal;
-    face_long_side; face_long_side; face_long_side; face_long_side; face_long_side; face_long_side; face_long_side; face_long_side;...
-   top_basal; top_basal; top_basal; top_basal];
+face_u_dir = faceting_weights(2)*faceting_weights(3);
+face_v_dir = faceting_weights(1)*faceting_weights(3);
+face_w_dir = faceting_weights(1)*faceting_weights(2);
+faceW = [face_u_dir; face_u_dir; face_u_dir; face_u_dir;...
+    face_u_dir; face_u_dir; face_u_dir; face_u_dir; face_w_dir; face_w_dir; face_w_dir; face_w_dir;
+    face_v_dir; face_v_dir; face_v_dir; face_v_dir; face_v_dir; face_v_dir; face_v_dir; face_v_dir;...
+   face_w_dir; face_w_dir; face_w_dir; face_w_dir];
+faceW_shortened = [face_u_dir; face_u_dir; face_u_dir; face_u_dir;...
+    face_u_dir; face_u_dir; face_u_dir; face_u_dir; face_w_dir; face_w_dir; face_w_dir; face_w_dir;
+   face_w_dir; face_w_dir; face_w_dir; face_w_dir];
+faceW = faceW_shortened
 faceW = faceW(ia,:);
 pairW = [faceting_weights(1);faceting_weights(1);faceting_weights(1);faceting_weights(1);...
     faceting_weights(1);faceting_weights(1);faceting_weights(1);faceting_weights(1); faceting_weights(3); faceting_weights(3);...
     faceting_weights(3); faceting_weights(3); faceting_weights(2);faceting_weights(2);faceting_weights(2);faceting_weights(2);faceting_weights(2);faceting_weights(2);faceting_weights(2);faceting_weights(2);
     faceting_weights(3);faceting_weights(3);faceting_weights(3);faceting_weights(3)];
+pairW_shortened = [faceting_weights(1);faceting_weights(1);faceting_weights(1);faceting_weights(1);...
+    faceting_weights(1);faceting_weights(1);faceting_weights(1);faceting_weights(1); faceting_weights(3); faceting_weights(3);...
+    faceting_weights(3); faceting_weights(3); faceting_weights(3);faceting_weights(3);faceting_weights(3);faceting_weights(3)];
+pairW = pairW_shortened
 pairW = pairW(ia,:);
 
 %%cuboid with weights
@@ -83,9 +96,11 @@ end
 
 end
 
+%{
 function ax = axis_id(v)
 [~, ax] = max(abs(v));
 end
+%}
 
 %u_hcp = facet(1); v_hcp = facet(2); w_hcp = facet(3); r_hcp = facet(4);
 
