@@ -22,6 +22,8 @@ thphii = [acosd(2*randii(1,:)-1)-90; 360*randii(2,:)]; %generates a random set o
 %}
 
 % create a uniformly spaced set
+% cubic minimal space ------------------------------------------------
+%{
 nn = 24*num;
 nTh = ceil(sqrt(nn));
 nPh = ceil(nn/nTh);
@@ -46,16 +48,17 @@ for ii = 1:nn
 end
 %vec
 
-% cubic minimal space ------------------------------------------------
 quadr = and(and(vec(:,1)>=0,vec(:,2)>=0),vec(:,3)>=0); % all entries are positive
 ipf1 = and(vec(:,1)>=vec(:,2),vec(:,2)>=vec(:,3));
 ipf2 = and(vec(:,2)>=vec(:,1),vec(:,1)>=vec(:,3)); % z needs to be the smallest component
 good_idx = and(quadr,or(ipf1,ipf2)); %positive entries and within the part of the sphere
 goodvec = vec(good_idx==1,:);
 goodnn = sum(good_idx); % amount of good vectors
+%}
 % --------------------------------------------------------------------
 
 % hexagonal minimal space --------------------------------------------
+%{
 nnTarget = 24 *num;
 nZ = ceil(sqrt(nnTarget));
 nPhi = ceil(nnTarget / nZ);
@@ -66,10 +69,11 @@ phiList(end) = [];
 thlist = asind(zz(:));
 phlist = pp(:);
 goodvec = [cosd(phlist).*cosd(thlist), ...
-    sind(phlist).*cos(thlist), ...
+    sind(phlist).*cosd(thlist), ...
     sind(thlist)];
 goodvec = uniquetol(goodvec, 1e-10, 'ByRows', true);
 goodnn = size(goodvec,1);
+% hexagonal minimal space ------------------------------------------
 
 drpDic = cell(goodnn,1);
 euDic = zeros(goodnn,3);
@@ -108,4 +112,8 @@ parfor index = 1:goodnn % parallel loops for
     drpDic{index} = double(drp_uint8) / 255;
 %     workbar(index/goodnn,'making DRP dictionary')
 end
+%}
+
+cs = crystalSymmetry(hexagonal);
+ori = equispacedSO3Grid(cs, 'resolution', 3*degree)
 msgbox('DRP dictionary construction Completed!');

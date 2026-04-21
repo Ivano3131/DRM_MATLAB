@@ -17,7 +17,7 @@ end
 u = facet(1); v = facet(2); w = facet(3); %weights take care of the shape
 
 %Ti64--------------------------------------------------------------------
-
+%{
 % remove the sides which are infinitely long?
 vec_facets = [u v w; -u v w; u -v w; u v -w;...
     u w v; -u w v; u -w v; u w -v; v w u; -v w u; v -w u; v w -u;...
@@ -82,7 +82,7 @@ pairW = pairW(ia,:);
 %        pairW(j,i) = w;
 %    end
 %end
-
+%}
 %Ti64 ---------------------------------------------------------------
 
 %Ti7

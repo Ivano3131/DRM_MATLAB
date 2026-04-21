@@ -25,7 +25,7 @@ exp_para.fitting_para = [1 0 0 0]; %Ti64
 exp_para.fitting_para = [1, 0.6, 10, 6, 0.8, 8]; %Ti7 - more narrow peak
 
 pos1 = [200 1000 300 1079]; %Ti64 - one of the non_good groups takes
-pos1 = [0 0 10 10]; %Ti7
+pos1 = [0 0 2048 1080]; %Ti7
 %1,165,16; 95,29,15; 161,28,19
 %pos1 = [0 0 963 1079];
 use_saved_drp_dic = false;
@@ -71,7 +71,7 @@ drp_original = igray2drp(igray_norm,phitheta,exp_para);
 cauchy = @(p,x) p(1) ./ ((1+((x)./p(2)).^2)); %creates a function to model the intensity
 % i_main / (1 + (peakDist/sd_main)^2)
 
-cosine_attempt = @(p,x) p(1) * cosd(x) ./ p(2); % this is not the correct way of going about it
+%cosine_attempt = @(p,x) p(1) * cosd(x) ./ p(2); % this is not the correct way of going about it
 % to test the diffuse reflection --> incident vector should not matter
 
 % shininess is not considered
@@ -168,7 +168,7 @@ drp_out = encode(AE_DRM,drp_measurement); %used to be drp encode with exp_para
 drp_tmp = encode(AE_DRM,drp_predicted); %used to be drp encode with exp_para
 
 %% direct indexing without autoencoder
-bandIntensity = [0.1 0.3 0.5 0.7]; % ratios of the different illumination intensities
+bandIntensity = [0.1 0.7]; %[0.1 0.3 0.5 0.7]; % ratios of the different illumination intensities
 for ii = 1:4
     exp_para.fitting_para(2) = bandIntensity(ii);
     drpLib = DRPLibGenerator(5*degree, exp_para);

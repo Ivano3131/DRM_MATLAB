@@ -63,7 +63,7 @@ oriLib = orientation.byEuler(euDic_q(:,1)*degree, euDic_q(:,2)*degree, euDic_q(:
 figQuery = figure('Name', 'Euler Query');
 axQuery = axes(figQuery);
 
-fig = figure('Position',[200,200,200*(nn+2),200*2.5],'Name','check_indexing_result');
+fig = figure('Position',[200,200,400*(nn+2),400*2.5],'Name','check_indexing_result');
 tl = tiledlayout(fig, 1, 3);
 axMap = nexttile(tl,1);
 imshow(color_drm_reg_all);
@@ -80,7 +80,7 @@ drp_predicted = {};
 k = 0;
 exitAll = false;
 
-while isvalid(fig) && ~exitAll
+while isvalid(fig)
     figure(fig);
     axes(axMap);
     [x_pos, y_pos] = ginput(1);
@@ -121,10 +121,12 @@ while isvalid(fig) && ~exitAll
 
     drawnow;
 
-    if isvalid(figQuery)
+    if isvalid(figQuery) && ~exitAll
+        cla(axQuery);
+        axes(axQuery);
         while true
-            s = strtrim(input('Euler Query'));
-            if empty(s)
+            s = strtrim(input('Euler Query [phi1 Phi phi2] (Enter=continue, q=quit):','s'));
+            if isempty(s)
                 break
             end
             if strcmpi(s,'q')

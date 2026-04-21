@@ -12,7 +12,7 @@ exp_para.faceting = [1 0 0]; % once it gets rotated around, it should be fine
 
 exp_para.fitting_para = [1 0 0 0];
 
-pos1 = [1 1 2048 1080]; %[1 1 2048 1080]; %[580 1059 600 1079]; %one of the non_good groups takes
+pos1 = [500 200 1900 1000]; %[1 1 2048 1080]; %[580 1059 600 1079]; %one of the non_good groups takes
 
 
 %% load sample and background dataset
@@ -60,8 +60,26 @@ figure;
 imagesc(img_sample);
 axis image;
 colorbar;
+title('Mean Intensity Distribution')
 
 figure;
 imagesc(intensity_max_map);
 axis image;
+colormap(jet);
 colorbar;
+title('Max Intensity Map')
+
+% plot the maximum intensity distribution divided into five bins
+numBins = 6;
+% Create bins for the maximum intensity distribution
+edges = [0 50 100 150 200 250 257];
+
+binned_intensity_map = discretize(intensity_max_map, edges);
+figure;
+imagesc(binned_intensity_map);
+axis image;
+colorbar;
+title('Binned Intensity Map')
+
+% create the phi_1 - DRP direction map
+histogram_phi_euler = drp_direction_analysis(drp_4d);
