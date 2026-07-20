@@ -114,7 +114,7 @@ parfor index = 1:goodnn % parallel loops for
 end
 %}
 
-cs = crystalSymmetry(hexagonal);
+cs = crystalSymmetry('hexagonal');
 ori = equispacedSO3Grid(cs, 'resolution', 3*degree);
 goodnn = length(ori);
 drpDic = cell(goodnn,1);

@@ -1,14 +1,15 @@
 %% DRM measurement indexing engine
-exp_para.th_max = 60;
-exp_para.th_min = 20;
-exp_para.th_num = 5;
-exp_para.ph_num = 72;
-exp_para.ph_min = 0;
-exp_para.ph_max = 355;
+exp_para.th_max = 65; % pure Ti - 65; % Ti7
+exp_para.th_min = 10 ;% pure Ti - 15; % Ti7
+exp_para.th_num = 12 ;% pure Ti - 11; % Ti7
+exp_para.ph_num = 120; % pure Ti - 72; % Ti7
+exp_para.ph_min = 0; % Ti7
+exp_para.ph_max = 357; % pure Ti - 355; % Ti7
 %exp_para.faceting = [1 0 0]; %change this
 
 exp_para.faceting = [1 0 0]; %Ti64 % once it gets rotated around, it should be fine
 exp_para.faceting = [1 1 0]; %Ti7
+exp_para.faceting = [1 0 0]; % Pure Ti
 %faceting_weights = [1 1 20]; % used to be 1 1 20 - defined in
 %rotate_facet!!!
 
@@ -23,9 +24,11 @@ exp_para.faceting = [1 1 0]; %Ti7
 %exp_para.fitting_para = [0 1 0 5]; - Original; not Lambertian diffusion
 exp_para.fitting_para = [1 0 0 0]; %Ti64
 exp_para.fitting_para = [1, 0.6, 10, 6, 0.8, 8]; %Ti7 - more narrow peak
+exp_para.fitting_para = [1, 0.6, 10, 6, 0.8, 8]; % Pure Ti
 
 pos1 = [200 1000 300 1079]; %Ti64 - one of the non_good groups takes
 pos1 = [0 0 2048 1080]; %Ti7
+pos1 = [0 0 0 0]; % Pure Ti
 %1,165,16; 95,29,15; 161,28,19
 %pos1 = [0 0 963 1079];
 use_saved_drp_dic = false;
@@ -99,10 +102,10 @@ if use_saved_drp_dic == false
     clear num_dic
 
     % save the outputs of makeDRPdic
-    save("DRP_dictionary_Ti7.mat", "drpDic", "euDic", "rotDic");
+    save("DRP_dictionary_PureTi.mat", "drpDic", "euDic", "rotDic");
 end
 if use_saved_drp_dic == true
-    S = load('DRP_dictionary_Ti7.mat', 'drpDic', 'euDic', 'rotDic');
+    S = load('DRP_dictionary_PureTi.mat', 'drpDic', 'euDic', 'rotDic');
     drpDic = S.drpDic;
     euDic = S.euDic;
     rotDic = S.rotDic;
@@ -120,10 +123,10 @@ if use_autoencoder == false
         'UseGPU', false); % this is a built-in MATLAB function
     clear hiddenSize1
 
-    save('DRP_autoencoder_Ti7.mat', 'AE_DRM');
+    save('DRP_autoencoder_PureTi.mat', 'AE_DRM');
 end
 if use_autoencoder == true
-    S = load('DRP_autoencoder_Ti7.mat', 'AE_DRM');
+    S = load('DRP_autoencoder_PureTi.mat', 'AE_DRM');
     AE_DRM = S.AE_DRM;
 end
 %%
@@ -151,7 +154,7 @@ index_num = cellfun(@(x) sum(x, 'all'), drp_original); % apply function to each 
 
 non_index_bg = index_num > 3e4; % weird
 figure, imshow(non_index_bg)
-% poorly-indexed pixels
+% poorly-indexed pixels - shows the 5% worst indexed pixels
 non_index_poor = index_result.quality < prctile(index_result.quality(:),95);
 
 %comment it out to reduce figure size
