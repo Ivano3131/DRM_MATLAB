@@ -12,7 +12,7 @@ function [igrey,phitheta,pos,img_sample] = drp_loader(exp_para,pos,options)
         pos (1,4) double
         options.format (1,:) string = 'jpg'
         options.scale (1,1) double = 1
-        options.folder (1,:) string = "C:\Users\mrbla\Desktop\Cambridge\Thesis\Figures\DRM\DRM-cpTi"
+        options.folder (1,:) string = "C:\Users\mrbla\Desktop\Cambridge\Thesis\Figures\DRM\DRM-cpTi\cropped_from_ui"
         % "C:\Users\mrbla\OneDrive\Bureaublad\Cambridge\Nottingham\New Sample\Full Sample"
         %C:\Users\mrbla\OneDrive\Bureaublad\Cambridge\P&W Deliverable 4\Ti7-Krolls-20min-EBSD"
         %"C:\Users\mrbla\OneDrive\Cambridge\P&W Deliverable 4\Ti7-Krolls-20min" %"C:\Users\mrbla\OneDrive\Bureaublad\Cambridge\Iven\cropped_left"
@@ -34,7 +34,11 @@ function [igrey,phitheta,pos,img_sample] = drp_loader(exp_para,pos,options)
     ext = strcat('*.', options.format);
     D_im = dir(fullfile(image_folder, ext));
 
+    th_num
+    ph_num
+    
     num_img = length(D_im);
+    num_img
     if num_img ~= th_num * ph_num
         error('experimental parameters are not correct!')
     end
@@ -56,7 +60,9 @@ function [igrey,phitheta,pos,img_sample] = drp_loader(exp_para,pos,options)
         pos = roi.Position;
         close 101
     end
-
+    
+    pos 
+    
     % generate the phitheta angle profile
     % phi from ph_min -> ph_max for each theta row
     % theta from th_min -> th_max

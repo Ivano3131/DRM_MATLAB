@@ -1,4 +1,13 @@
 %% DRM measurement indexing engine
+
+addpaths=false;
+if addpaths
+    addpath("C:\Users\mrbla\Desktop\Cambridge\Physics-based DRM\DRM_MATLAB\baseFunctions") % add path to base functions
+    addpath("C:\Users\mrbla\Desktop\Cambridge\Physics-based DRM\DRM_MATLAB\mathFunctions")
+    addpath("C:\Users\mrbla\Desktop\Cambridge\Physics-based DRM\DRM_MATLAB\utilities")
+    addpath("C:\Users\mrbla\Desktop\mrbla-downloads\Relevant Downloads\MTEX Code\mtex-6.1.0") % for MTEX
+    startup_mtex
+end
 exp_para.th_max = 65; % pure Ti - 65; % Ti7
 exp_para.th_min = 10 ;% pure Ti - 15; % Ti7
 exp_para.th_num = 12 ;% pure Ti - 11; % Ti7
@@ -24,7 +33,7 @@ exp_para.faceting = [1 0 0]; % Pure Ti
 %exp_para.fitting_para = [0 1 0 5]; - Original; not Lambertian diffusion
 exp_para.fitting_para = [1 0 0 0]; %Ti64
 exp_para.fitting_para = [1, 0.6, 10, 6, 0.8, 8]; %Ti7 - more narrow peak
-exp_para.fitting_para = [1, 0.6, 10, 6, 0.8, 8]; % Pure Ti
+exp_para.fitting_para = [1 0.6 10 6 0.8 8]; % Pure Ti
 
 pos1 = [200 1000 300 1079]; %Ti64 - one of the non_good groups takes
 pos1 = [0 0 2048 1080]; %Ti7
