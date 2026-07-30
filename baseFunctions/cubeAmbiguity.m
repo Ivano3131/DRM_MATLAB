@@ -16,14 +16,13 @@ function out = cubeAmbiguity(exp_para, options)
 %
 %   AMBIGUITY RADIUS - for each dictionary entry, the largest misorientation
 %     to any OTHER entry (over all azimuth shifts) that still correlates above
-%     corrTol.  Near 0 means that orientation is pinned down; 90 or 120 deg
-%     means it has a far-away twin the matcher cannot rule out.  The p90 is
-%     the number to watch: it says what fraction of orientation space is
-%     hopeless.
+%     corrTol.  Read the MEDIAN: one grid step just means the model is smooth
+%     (neighbours look alike, which is fine and expected), while tens of
+%     degrees means a genuine extra symmetry that no matcher can undo.
 %
 %   ROUND TRIP - simulate a random orientation, match it back, and report the
-%     misorientation.  The median should be BELOW the grid step; the tail is
-%     the same degeneracy showing up in practice.
+%     misorientation.  This is the operative number.  The median should be
+%     BELOW the grid step; the tail is the degeneracy showing up in practice.
 %
 % Both are measured modulo the box's own proper symmetry (identity plus 180
 % deg about each box axis), which is the group the model genuinely cannot and
@@ -98,15 +97,25 @@ for ii = 1:options.nTest
                             local_bunge(r.euler(1),r.euler(2),r.euler(3)), S);
 end
 
-p90 = prctile(radius,90);
-if p90 < 2*options.resolution
-    verdict = "INDEXABLE - the dictionary is essentially unique.";
-elseif p90 < 30
-    verdict = "USABLE - a minority of orientations have close twins.";
+% The verdict is driven by the ROUND TRIP, because that is what actually
+% happens in use.  The ambiguity radius is supporting evidence and has to be
+% read with care: a smooth model has broad correlation peaks, so plenty of
+% neighbours clear corrTol without being true twins - a median radius of one
+% grid step is just that smoothness.  A median radius of tens of degrees is
+% different: it means a genuine symmetry, and no matcher can undo it.
+p90  = prctile(radius,90);
+frac = sum(rt > 10) / numel(rt);
+if median(radius) >= 30
+    verdict = "DEGENERATE - the median pattern has a FAR-AWAY twin, i.e. the " + ...
+              "box has a symmetry the crystal does not. Give the three axes " + ...
+              "distinct dims (or distinct edgeAmp) before trusting a map.";
+elseif frac < 0.15
+    verdict = "INDEXABLE - orientations are recovered to within the grid step.";
+elseif frac < 0.35
+    verdict = "USABLE - a minority of orientations land on a far-away twin; " + ...
+              "check those pixels by hand.";
 else
-    verdict = "DEGENERATE - a large part of orientation space has far-away " + ...
-              "twins with the same DRP. Give the three box axes distinct " + ...
-              "dims (or distinct edgeAmp) before trusting a map.";
+    verdict = "DEGENERATE - most orientations land on a far-away twin.";
 end
 
 out.radius    = radius;

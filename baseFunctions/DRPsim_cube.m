@@ -15,30 +15,31 @@ function [simDRP, E] = DRPsim_cube(eu1, eu2, eu3, exp_para)
 %
 %       v(theta,phi) = [cos(phi)cos(45+theta/2), sin(phi)cos(45+theta/2), sin(45+theta/2)]
 %
-% A rounded edge with axis t is a piece of cylinder, so its surface normals
-% all lie on the great circle perpendicular to t.
+% A rounded edge is a piece of cylinder about its CREST t, so its surface
+% normals all lie on the great circle perpendicular to t.  The crest is the
+% edge's HORIZONTAL surface trace (cubeReflectors projects it), because what
+% reflects is the corrugation cut into the polished surface, not the tilted
+% edge of the buried box.  Being horizontal, that great circle contains +Z, so
+% EVERY STRIPE IS A DIAMETER THROUGH THE DRP CENTRE - the defining observation
+% of section 2.3.2.
 %
 %   ACROSS the stripe - the angular distance of a probe from that great
 %   circle is asind(v.t), giving a Cauchy ridge of half-width stripeWidth:
 %
 %       across = amp / (1 + (asind(v.t)/stripeWidth)^2)
 %
-%   ALONG the stripe - the bevel is only a QUARTER of that cylinder: rounding
-%   the edge sweeps the normal from face n1 round to face n2 and no further.
-%   Projecting the probe onto the plane perpendicular to t,
+%   ALONG the stripe - the bevel is only an ARC of that cylinder: rounding the
+%   edge sweeps the normal from one face round to the other and no further.
+%   Projecting the probe onto the plane perpendicular to the crest,
 %
 %       w   = normalise(v - (v.t)t)
-%       psi = atan2d(w.n2, w.n1)          0 at face n1, 90 at face n2
+%       psi = angle of w from f.arcN1 towards f.arcN2
 %
-%   and the edge only lights psi within [0,90] widened by bevelSpan, with a
-%   raised-cosine shoulder of width bevelSoft.  This is why the stripe is
-%   BRIGHTER ON ONE SIDE of the DRP centre: the lit arc is centred on the
-%   direction the bevel faces, not on +Z.
-%
-%   Note the parameterisation is in the plane perpendicular to t, NOT in the
-%   {Z, u} plane DRPsim_Ti64 uses.  That matters here because a box edge is
-%   free to tilt out of the surface, and a tilted crest's great circle does
-%   not pass through the DRP centre.
+%   the edge lights psi within [0, arcWedge] widened by bevelSpan, with a
+%   raised-cosine shoulder of width bevelSoft.  arcWedge is 90 deg for an
+%   untilted edge and less once the edge has been projected onto the surface.
+%   This is why the stripe is BRIGHTER ON ONE SIDE of the DRP centre: the lit
+%   arc is centred on the direction the bevel faces, not on +Z.
 %
 %   Finally a (v.Z)^stripeTaper microfacet foreshortening factor, the same
 %   term as in DRPsim_Ti64.
@@ -109,14 +110,17 @@ for ii = 1:numel(E)
     f = E(ii);
     if ~(f.amp > 0), continue; end
 
-    t = f.axis;
+    % The CREST is the edge's horizontal surface trace, not the tilted edge
+    % itself (see cubeReflectors).  Being horizontal, its great circle
+    % contains +Z, so every stripe is a diameter through the DRP centre.
+    t = f.crest;
 
     % (a) across the stripe: distance from the great circle with pole t
     vt   = t(1)*vx + t(2)*vy + t(3)*vz;
     dist = asind(min(max(vt,-1),1));
     temp = f.amp ./ (1 + (dist ./ cube.stripeWidth).^2);
 
-    % (b) along the stripe: the quarter-cylinder bevel gate
+    % (b) along the stripe: the bevel gate
     temp = temp .* local_bevelGate(f, t, vt, vx, vy, vz, ...
                                    cube.bevelSpan, cube.bevelSoft);
 
@@ -143,30 +147,40 @@ end
 function g = local_bevelGate(f, t, vt, vx, vy, vz, span, soft)
 % Fraction of the edge's rounding that reflects into each DRP cell.
 %
-% The bevel's normals run from n1 to n2 along the great circle perpendicular
-% to t, a 90 deg quarter.  Project the probe into that plane and read off its
-% position psi; the edge lights psi within (90 + span)/2 of the wedge centre
-% (psi = 45), fading to zero over a further `soft` degrees.  A span >= 270
-% opens the gate to the whole circle, restoring the idealised symmetric
-% stripe of a full semi-cylinder.
-halfSpan = 45 + span/2;
-if halfSpan >= 180
+% The bevel's normals run from arcN1 to arcN2 along the great circle
+% perpendicular to the crest, sweeping f.arcWedge degrees (90 for an untilted
+% edge, less once the edge was projected onto the surface).  Project the probe
+% into that plane and read off its position psi; the edge lights psi within
+% (arcWedge + span)/2 of the wedge centre, fading to zero over a further
+% `soft` degrees.  A span large enough to reach 180 opens the gate to the
+% whole circle, restoring the idealised symmetric stripe of a semi-cylinder.
+wedge    = f.arcWedge;
+halfSpan = wedge/2 + span/2;
+if isnan(wedge) || halfSpan >= 180
     g = 1;
     return
 end
 
-% probe projected onto the plane perpendicular to t, then read in the {n1,n2}
-% basis (n1 and n2 are orthonormal there, being two box axes)
+% probe projected onto the plane perpendicular to the crest, read in an
+% orthonormal basis of that plane built on arcN1
 wx = vx - vt*t(1);
 wy = vy - vt*t(2);
 wz = vz - vt*t(3);
 
-n1 = f.n1;  n2 = f.n2;
-c1 = wx*n1(1) + wy*n1(2) + wz*n1(3);
-c2 = wx*n2(1) + wy*n2(2) + wz*n2(3);
+e1 = f.arcN1;
+e2 = f.arcN2 - dot(f.arcN2,e1)*e1;        % arcN1 and arcN2 need not be perpendicular
+n2n = norm(e2);
+if n2n < 1e-9
+    g = 1;
+    return
+end
+e2 = e2 / n2n;
 
-psi  = atan2d(c2, c1);                              % 0 at n1, 90 at n2
-dpsi = abs(mod(psi - 45 + 180, 360) - 180);         % wrapped distance from the wedge centre
+c1 = wx*e1(1) + wy*e1(2) + wz*e1(3);
+c2 = wx*e2(1) + wy*e2(2) + wz*e2(3);
+
+psi  = atan2d(c2, c1);                              % 0 at arcN1, arcWedge at arcN2
+dpsi = abs(mod(psi - wedge/2 + 180, 360) - 180);    % wrapped distance from the wedge centre
 
 if soft > 0
     x = min(max((dpsi - halfSpan) ./ soft, 0), 1);
