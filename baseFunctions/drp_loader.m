@@ -6,6 +6,19 @@ function [igrey,phitheta,pos,img_sample] = drp_loader(exp_para,pos,options)
 % pos_interest is ROI, optional
 % Create date: Oct 27, 2022
 % By: Chenyang ZHU @ NTU
+%
+% TWO INPUT FORMATS -------------------------------------------------------
+% The measurement can come either as a FOLDER of images named
+% <phi>_<theta>.<ext>, or as the single .drp binary the DRM acquisition
+% software exports.  Both give identical outputs, so nothing downstream cares
+% which was used:
+%
+%   drp_loader(exp_para, pos, folder="...\cropped_left", scale=0.4458)
+%   drp_loader(exp_para, pos, file="...\cropped_left\0.5x_withBG_left.drp")
+%
+% `file` wins when both are given.  Note `scale` belongs to the folder path
+% only - a .drp was already written at its export resolution, and `pos` is in
+% those pixels.  See drp_file_loader for the rest.
 % -------------------------------------------------------------------------
     arguments
         exp_para struct
@@ -16,6 +29,29 @@ function [igrey,phitheta,pos,img_sample] = drp_loader(exp_para,pos,options)
         % "C:\Users\mrbla\OneDrive\Bureaublad\Cambridge\Nottingham\New Sample\Full Sample"
         %C:\Users\mrbla\OneDrive\Bureaublad\Cambridge\P&W Deliverable 4\Ti7-Krolls-20min-EBSD"
         %"C:\Users\mrbla\OneDrive\Cambridge\P&W Deliverable 4\Ti7-Krolls-20min" %"C:\Users\mrbla\OneDrive\Bureaublad\Cambridge\Iven\cropped_left"
+        options.file (1,:) string = string(missing)   % <<< .drp path; "" opens a chooser
+        options.precision (1,1) string ...
+            {mustBeMember(options.precision,["uint8","uint16"])} = "uint8"
+        options.strict (1,1) logical = true
+        options.verbose (1,1) logical = true
+    end
+
+    % ---- .drp branch ------------------------------------------------------
+    % Dispatch on file being SUPPLIED, not on it being non-empty: file="" is a
+    % deliberate request for the file chooser, exactly as folder="" is.
+    if ~all(ismissing(options.file))
+        if options.scale ~= 1
+            error('drp_loader:scaleWithFile', ...
+                ['scale=%g cannot apply to a .drp - the file is already at ' ...
+                 'its export resolution, and pos is in those pixels.  ' ...
+                 'Drop scale, or load the image folder instead.'], options.scale);
+        end
+        [igrey,phitheta,pos,img_sample] = drp_file_loader(exp_para, pos, ...
+            file      = options.file, ...
+            precision = options.precision, ...
+            strict    = options.strict, ...
+            verbose   = options.verbose);
+        return
     end
 
     th_min = exp_para.th_min;

@@ -47,10 +47,33 @@ exp_para.ph_min = 0;
 exp_para.ph_max = 357;
 exp_para.ph_num = 120;
 
-pos1       = [0 0 0 0];      % ROI; [0 0 0 0] -> draw one interactively
-scaleCoeff = 0.5;
-drmFolder  = "C:\\Users\\mrbla\\Desktop\\Cambridge\\Iven\\cropped_left";             % <<< PLUG IN YOUR Ti64 IMAGE FOLDER HERE >>>
+% WHERE THE MEASUREMENT COMES FROM ----------------------------------------
+% Either a FOLDER of images named <phi>_<theta>.jpg, or the single .drp
+% binary the DRM acquisition software exports.  Set drmSource and fill in the
+% matching line; everything downstream is identical either way.
+%
+%   "folder"  full-resolution frames, shrunk on the way in by scaleCoeff.
+%   "file"    already at its export resolution, so no scaling - pos1 is in
+%             .drp pixels.  Faster to load, no dependence on filenames, and it
+%             carries the full 16-bit depth (see precision= below).
+drmSource = "file";           % "file" or "folder"
+
+% pos1       = [0 0 963 1079];      % ROI; [0 0 0 0] -> draw one interactively
+%pos1 = [15 116 858 962]; % to match .drp
+%scaleCoeff = 0.5;
+
+scaleCoeff = 0.4458;          % 2160->963, 1926->859  (MATLAB imresize uses ceil)
+pos1       = [0 0 859 963];   % full frame for both paths: the .drp is 859x963
+drmFolder  = "C:\Users\mrbla\Desktop\Cambridge\Iven\cropped_left";             % <<< PLUG IN YOUR Ti64 IMAGE FOLDER HERE >>>
                              % "" makes drp_loader open a folder chooser
+drmFile    = "C:\\Users\\mrbla\\Desktop\\Cambridge\\Thesis\\Results\\DRP-Cropped-Left-NoBGSubtraction.drp";   % <<< OR YOUR .drp HERE >>>
+                             % "" makes drp_loader open a file chooser
+
+% The .drp header states the experiment, so it can set exp_para instead of
+% being typed in beside it.  drp_loader errors on any disagreement rather than
+% indexing against a dictionary built for a different angular grid:
+%   hdr = drp_file_info(drmFile)          % ph_num, th_num, angles, size
+%   exp_para = hdr.exp_para               % and add .crystal below
 
 %% crystallography ---------------------------------------------------------
 % One crystalSymmetry drives the box triad, the dictionary and the IPF key.
@@ -145,8 +168,17 @@ checkCubeMechanism(euPaper, exp_para, ...
 amb = cubeAmbiguity(exp_para, resolution=5, nTest=60);
 
 %% load sample dataset ----------------------------------------------------
-[igray_sample, phitheta, pos, img_sample] = drp_loader( ...
-    exp_para, pos1, format='jpg', scale=scaleCoeff, folder=drmFolder);
+% precision="uint16" keeps the depth the .drp actually carries (~6900 levels
+% in this dataset) instead of the 256 a JPEG folder gives.  Indexing
+% normalises every DRP, so it changes quantisation noise, not the score -
+% but it DOES rescale index_num below, so retune that threshold if you use it.
+if drmSource == "file"
+    [igray_sample, phitheta, pos, img_sample] = drp_loader( ...
+        exp_para, pos1, file=drmFile, precision='uint8');
+else
+    [igray_sample, phitheta, pos, img_sample] = drp_loader( ...
+        exp_para, pos1, format='jpg', scale=scaleCoeff, folder=drmFolder);
+end
 
 % convert into a DRP stack: [n1 x n2] cells, each th_num x ph_num
 drp_original = igray2drp(igray_sample, phitheta, exp_para);
@@ -184,6 +216,9 @@ drp_original = igray2drp(igray_sample, phitheta, exp_para);
 % phi1 is not sampled: it is a rigid azimuthal rotation of the DRP, and
 % matchDRPcube searches all 120 shifts by FFT.  phi2 runs to 180, not 60,
 % because the BOX is 222 even though the crystal is 6/mmm.
+% matchDRPcube uses the GPU automatically when one is present and falls back
+% to the CPU otherwise; both run in double and agree to round-off.  Pass
+% gpu="off" to force the CPU, or chunk=N to cap device memory.
 [drpDic, euDic] = makeDRPdic_cube(exp_para, resolution=5);
 res = matchDRPcube(drp_original, drpDic, euDic, exp_para);
 
@@ -197,6 +232,13 @@ title('IPF-z, wrought Ti64 alpha (cube-lath mechanism)');
 
 figure, imagesc(res.score); axis image; colorbar
 title('match score (correlation; higher is better)');
+
+%% export the predicted map as .ctf --------------------------------------
+% Phase 0 for masked-out pixels, alpha-Ti (hcp, Laue 9) for the rest.  Load
+% it back the same way you load an EBSD file:
+%   ebsd = EBSD.load(ctfOut,'convertEuler2SpatialReferenceFrame');
+ctfOut = "predicted_Ti64_cube.ctf";
+export_ctf(ctfOut, res.EUmap, non_index_bg & res.score > 0);
 
 %% validate: measured vs predicted DRP at clicked pixels -----------------
 [drp_measurement, drp_predicted, xy] = check_indexing_result_cube( ...

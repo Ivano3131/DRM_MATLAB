@@ -5,7 +5,9 @@ function igray = drp2igray(drp_original,exp_para)
         exp_para struct
     end
     [n1,n2] = size(drp_original);
-    igray = zeros(n1,n2,exp_para.ph_num*exp_para.th_num,'uint8');
+    % 'like' the DRPs themselves: a stack loaded from a .drp at precision
+    % "uint16" would otherwise saturate on the way back out.
+    igray = zeros(n1,n2,exp_para.ph_num*exp_para.th_num,'like',drp_original{1,1});
     for ii = 1:n1
         for jj = 1:n2
             drp_temp = drp_original{ii,jj};

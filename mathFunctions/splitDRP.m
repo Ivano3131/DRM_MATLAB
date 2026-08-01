@@ -5,7 +5,10 @@ function [drp_uni] = splitDRP(exp_para,long_drp,phitheta)
 % -------------------------------------------------------------------------
 ph_num = exp_para.ph_num;
 th_num = exp_para.th_num;
-drp = zeros(ph_num,th_num,'uint8');
+% 'like' rather than a hard-coded uint8: a .drp carries uint16, and filling a
+% uint8 buffer from it would saturate every sample above 255 to white.  For a
+% uint8 stack this is the same array as before.
+drp = zeros(ph_num,th_num,'like',long_drp);
 th_step = (exp_para.th_max - exp_para.th_min) / (th_num - 1);
 ph_step = 360 / ph_num;
 

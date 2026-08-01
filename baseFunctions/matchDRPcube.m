@@ -37,9 +37,30 @@ function res = matchDRPcube(drpIn, drpDic, euDic, exp_para, options)
 %   exp_para  needs th_num, ph_num.
 %
 % OPTIONS -----------------------------------------------------------------
-%   chunk    pixels processed per batch (default 32).  Raise it for speed if
-%            memory allows: the working array is n x chunk x ph_num complex.
+%   chunk    pixels processed per batch.  0 (default) picks it automatically:
+%            32 on the CPU, and on the GPU as much as free device memory
+%            allows.  Pixels are independent columns of the batched product,
+%            so chunk changes speed and memory only, never the result.
+%   gpu      "auto" (default) uses the GPU when Parallel Computing Toolbox and
+%            a supported device are present, and falls back to the CPU
+%            silently otherwise.  "on" errors if there is no device, "off"
+%            forces the CPU path.
 %   verbose  true (default) prints progress.
+%
+% GPU NOTES ---------------------------------------------------------------
+% The device path runs in DOUBLE, like the CPU path, so the two agree to
+% round-off (~1e-15 on a score in [-1,1]) rather than to single precision.
+% That matters because the winner is picked by argmax over nDic*ph_num
+% candidates: a coarser precision could reorder near-ties.  Consumer cards
+% run FP64 at a fraction of FP32, so the win here comes mostly from
+% bandwidth - the ifft/max stage moves ~2.6 MB per pixel and is what the
+% device actually accelerates.
+%
+% Note the dictionary is degenerate at Phi = 0, where every phi2 gives the
+% same pattern (phi1 absorbs the rotation about c).  Those entries tie
+% exactly, so CPU and GPU may report different .idx / phi2 for them while
+% describing the identical DRP and the identical orientation.  Compare
+% orientations or .score there, not .idx.
 %
 % OUTPUT ------------------------------------------------------------------
 %   res.EUmap  n1 x n2 x 3 [phi1 Phi phi2] in degrees
@@ -58,7 +79,8 @@ arguments
     drpDic cell
     euDic double
     exp_para struct
-    options.chunk (1,1) double {mustBePositive} = 32
+    options.chunk (1,1) double {mustBeNonnegative} = 0
+    options.gpu (1,1) string {mustBeMember(options.gpu,["auto","on","off"])} = "auto"
     options.verbose (1,1) logical = true
 end
 
@@ -94,6 +116,35 @@ clear D
 
 useFast = exist('pagemtimes','builtin') || exist('pagemtimes','file');
 
+% ---- device selection ---------------------------------------------------
+[useGPU, gpuName, gpuFree] = local_pickDevice(options.gpu);
+
+% Below a batch or so of pixels the dictionary transfer dominates and the
+% device is a net loss - cubeAmbiguity calls this once per test pattern.
+if useGPU && P < 64 && options.gpu ~= "on"
+    useGPU = false;
+end
+
+% ---- batch size --------------------------------------------------------
+% Each pixel needs the complex product (nDic x ph_num x 16 B), its real
+% inverse transform (x 8 B) and headroom for the transform's own workspace.
+chunkSz = options.chunk;
+if chunkSz == 0
+    if useGPU
+        bytesPerPix = nDic * ph_num * 40;
+        chunkSz = max(64, min(2048, floor(0.5 * gpuFree / bytesPerPix)));
+    else
+        chunkSz = 32;
+    end
+end
+chunkSz = min(chunkSz, P);
+
+Acpu = [];
+if useGPU
+    Acpu = A;                      % kept for the out-of-memory retry below
+    A    = gpuArray(A);
+end
+
 score = zeros(P,1);
 shift = zeros(P,1);
 idx   = ones(P,1);
@@ -101,11 +152,18 @@ idx   = ones(P,1);
 if options.verbose
     fprintf('matchDRPcube: %d pixels against %d patterns x %d shifts ...\n', ...
         P, nDic, ph_num);
+    if useGPU
+        fprintf('  device: %s (double), chunk %d\n', gpuName, chunkSz);
+    else
+        fprintf('  device: CPU (double), chunk %d\n', chunkSz);
+    end
 end
 tStart = tic;
 
-for i0 = 1:options.chunk:P
-    i1 = min(i0 + options.chunk - 1, P);
+i0     = 1;
+nBatch = 0;
+while i0 <= P
+    i1 = min(i0 + chunkSz - 1, P);
     pIdx = i0:i1;
     nP   = numel(pIdx);
 
@@ -115,25 +173,45 @@ for i0 = 1:options.chunk:P
     for jj = 1:nP
         [Mblk(:,:,jj), valid(jj)] = local_normalise(drpCell{pIdx(jj)});
     end
-    % th_num x nP x ph_num, pages over azimuth frequency
-    Fm = permute(fft(Mblk,[],2), [1 3 2]);
 
-    if useFast
-        C = pagemtimes(A, Fm);                 % nDic x nP x ph_num
-    else
-        C = complex(zeros(nDic, nP, ph_num));
-        for f = 1:ph_num
-            C(:,:,f) = A(:,:,f) * Fm(:,:,f);
+    if useGPU
+        try
+            [best, kBest, sBest] = local_matchGPU(A, Mblk, nP, ph_num);
+        catch ME
+            % A device that cannot hold this batch is a reason to use a
+            % smaller one, not to lose the run.
+            if contains(ME.identifier,'OutOfMemory') && chunkSz > 64
+                chunkSz = max(64, floor(chunkSz/2));
+                if options.verbose
+                    fprintf('  GPU out of memory, retrying with chunk %d\n', chunkSz);
+                end
+                reset(gpuDevice);          % drops every gpuArray, A included
+                A = gpuArray(Acpu);
+                continue                       % same i0, smaller batch
+            end
+            rethrow(ME);
         end
+    else
+        % th_num x nP x ph_num, pages over azimuth frequency
+        Fm = permute(fft(Mblk,[],2), [1 3 2]);
+
+        if useFast
+            C = pagemtimes(A, Fm);                 % nDic x nP x ph_num
+        else
+            C = complex(zeros(nDic, nP, ph_num));
+            for f = 1:ph_num
+                C(:,:,f) = A(:,:,f) * Fm(:,:,f);
+            end
+        end
+
+        % circular correlation theorem: index 1 along dim 3 is shift 0
+        cc = real(ifft(C, [], 3));
+        cc = reshape(permute(cc, [1 3 2]), nDic*ph_num, nP);
+
+        [best, li] = max(cc, [], 1);
+        kBest = mod(li-1, nDic) + 1;
+        sBest = floor((li-1) / nDic);
     end
-
-    % circular correlation theorem: index 1 along dim 3 is shift 0
-    cc = real(ifft(C, [], 3));
-    cc = reshape(permute(cc, [1 3 2]), nDic*ph_num, nP);
-
-    [best, li] = max(cc, [], 1);
-    kBest = mod(li-1, nDic) + 1;
-    sBest = floor((li-1) / nDic);
 
     best(~valid)  = 0;
     kBest(~valid) = 1;
@@ -143,9 +221,15 @@ for i0 = 1:options.chunk:P
     idx(pIdx)   = kBest(:);
     shift(pIdx) = sBest(:);
 
-    if options.verbose && (i1 == P || mod(i0-1, 50*options.chunk) == 0)
+    if options.verbose && (i1 == P || mod(nBatch, 50) == 0)
         fprintf('  %6d / %6d pixels  (%.1f s)\n', i1, P, toc(tStart));
     end
+    nBatch = nBatch + 1;
+    i0 = i1 + 1;
+end
+
+if useGPU
+    A = [];                                    %#ok<NASGU> release device memory
 end
 
 if options.verbose
@@ -163,6 +247,64 @@ res.score = reshape(score, n1, n2);
 res.shift = reshape(shift, n1, n2);
 res.idx   = reshape(idx,   n1, n2);
 res.euler = euler;
+end
+
+% =========================================================================
+function [best, kBest, sBest] = local_matchGPU(A, Mblk, nP, ph_num)
+% One batch on the device.  Same arithmetic as the CPU branch, in double, so
+% the two agree to round-off.
+Fm = permute(fft(gpuArray(Mblk), [], 2), [1 3 2]);   % th_num x nP x ph_num
+C  = pagemtimes(A, Fm);                              % nDic   x nP x ph_num
+clear Fm
+cc = real(ifft(C, [], 3));
+clear C
+
+% Argmax in two stages rather than one over a reshaped nDic*ph_num x nP
+% copy.  The CPU branch's linear index is k + s*nDic, so its max takes the
+% smallest s, and within it the smallest k.  max over dim 1 keeps the
+% smallest k per shift and max over dim 3 then keeps the smallest shift -
+% the same winner, without materialising the permute (which on this array is
+% another 0.66 MB per pixel of device traffic).
+[m1, kAll]   = max(cc, [], 1);          % 1 x nP x ph_num
+[best, sIdx] = max(m1, [], 3);          % 1 x nP
+kBest = reshape(kAll, nP, ph_num);
+kBest = kBest((1:nP).' + (sIdx(:)-1)*nP).';
+sBest = sIdx - 1;
+
+[best, kBest, sBest] = gather(best, kBest, sBest);
+end
+
+% =========================================================================
+function [useGPU, name, freeBytes] = local_pickDevice(mode)
+% "auto" never costs the caller a run: anything missing means the CPU path.
+useGPU    = false;
+name      = '';
+freeBytes = 0;
+if mode == "off"
+    return
+end
+why = '';
+if isempty(ver('parallel'))
+    why = 'Parallel Computing Toolbox is not installed';
+elseif gpuDeviceCount("available") < 1
+    why = 'no supported GPU device is available';
+else
+    try
+        d = gpuDevice;
+        if ~d.DeviceAvailable
+            why = 'the GPU device is not available for computation';
+        else
+            useGPU    = true;
+            name      = d.Name;
+            freeBytes = d.AvailableMemory;
+        end
+    catch ME
+        why = ME.message;
+    end
+end
+if ~useGPU && mode == "on"
+    error('matchDRPcube:noGPU','gpu="on" was requested but %s.', why);
+end
 end
 
 % =========================================================================
